@@ -1,0 +1,131 @@
+#!/system/bin/sh
+# CMPLX TH3ORY Script Set
+
+LOG_FILE=/data/cmplxth3ory.log
+
+if [ -e $LOG_FILE ]; then
+	rm $LOG_FILE;
+fi;
+
+#knuckleheads, gain rw access
+sysrw
+
+# enable sysctl tweaks
+#
+sysctl -p /system/etc/sysctl.conf
+
+# Start crond
+#
+sync
+mount -o remount,rw rootfs /
+echo "root:x:0:0::data/cron:/system/xbin/bash" > /system/etc/passwd
+ln -s /system/xbin /xbin
+sync
+mount -o remount,ro rootfs /
+timezone=`date +%z`
+case "$timezone" in '-0800')
+TZ=PST8PDT ;;
+'-0700')
+TZ=MST7MDT ;;
+'-0600')
+TZ=CST6CDT ;;
+'-0500')
+TZ=EST5EDT ;;
+*)
+TZ=EST5EDT ;;
+esac
+export TZ
+crond -c /data/cron
+
+# Kill Swap
+#
+echo "0" > /proc/sys/vm/swappiness
+
+#HyperTh3ory
+#
+busybox rm -f /cache/*.apk
+busybox rm -f /cache/*.tmp
+busybox rm -f /data/dalvik-cache/*.apk
+busybox rm -f /data/dalvik-cache/*.tmp
+sysctl -w vm.overcommit_memory=1
+sysctl -w vm.page-cluster=3
+sysctl -w vm.drop_caches=3
+
+
+#Battery
+#
+busybox sysctl -w vm.dirty_expire_centisecs=1000
+busybox sysctl -w vm.dirty_writeback_centisecs=2000
+busybox sysctl -w kernel.random.write_wakeup_threshold=256
+busybox sysctl -w kernel.random.read_wakeup_threshold=128
+
+#network efficiency
+echo 0 > /proc/sys/net/ipv4/tcp_timestamps
+echo 1 > /proc/sys/net/ipv4/tcp_no_metrics_save
+echo 1 > /sys/module/bcmdhd/parameters/wifi_pm
+
+# Optimize Vm
+#
+if [ -e /proc/sys/vm/vfs_cache_pressure ]; then
+	echo "10" > /proc/sys/vm/vfs_cache_pressure
+fi
+
+if [ -e /proc/sys/vm/dirty_expire_centisecs ]; then
+	echo "500" > /proc/sys/vm/dirty_expire_centisecs
+fi
+
+if [ -e /proc/sys/vm/dirty_writeback_centisecs ]; then
+	echo "1000" > /proc/sys/vm/dirty_writeback_centisecs
+fi
+
+if [ -e /proc/sys/vm/dirty_ratio ]; then
+	echo "90" > /proc/sys/vm/dirty_ratio
+fi
+
+if [ -e /proc/sys/vm/dirty_background_ratio ]; then
+	echo "45" > /proc/sys/vm/dirty_background_ratio
+fi
+
+if [ -f "\$i" ]; then
+	sync;
+	echo "cfq" > \$i;
+fi
+
+
+# File System Mounts
+#
+busybox mount -o remount,noatime,nodiratime,discard,noauto_da_alloc,nosuid,nodev,data=writeback,barrier=0 -t auto /
+busybox mount -o remount,noatime,nodiratime,discard,noauto_da_alloc,nosuid,nodev,data=writeback,barrier=0 -t auto /dev
+busybox mount -o remount,noatime,nodiratime,discard,noauto_da_alloc,nosuid,nodev,data=writeback,barrier=0 -t auto /proc
+busybox mount -o remount,noatime,nodiratime,discard,noauto_da_alloc,nosuid,nodev,data=writeback,barrier=0 -t auto /sys
+busybox mount -o remount,noatime,nodiratime,discard,noauto_da_alloc,nodev,data=writeback,barrier=0 -t auto /system
+busybox mount -o remount,noatime,nodiratime,discard,noauto_da_alloc,nosuid,nodev,data=writeback,barrier=0 -t auto /data
+busybox mount -o remount,noatime,nodiratime,discard,noauto_da_alloc,nosuid,nodev,data=writeback,barrier=0 -t auto /data/data
+busybox mount -o remount,noatime,nodiratime,discard,noauto_da_alloc,nosuid,nodev,data=writeback,barrier=0 -t auto /cache
+busybox mount -o remount,noatime,nodiratime,discard,noauto_da_alloc,nosuid,nodev,data=writeback,barrier=0 -t auto /acct
+busybox mount -o remount,noatime,nodiratime,discard,noauto_da_alloc,nosuid,nodev,data=writeback,barrier=0 -t auto /dev/pts
+busybox mount -o remount,noatime,nodiratime,discard,noauto_da_alloc,nosuid,nodev,data=writeback,barrier=0 -t auto /dev/cpuctl
+busybox mount -o remount,noatime,nodiratime,discard,noauto_da_alloc,nosuid,nodev,data=writeback,barrier=0 -t auto /mnt/asec
+busybox mount -o remount,noatime,nodiratime,discard,noauto_da_alloc,nosuid,nodev,data=writeback,barrier=0 -t auto /mnt/obb
+busybox mount -o remount,noatime,nodiratime,discard,noauto_da_alloc,nosuid,nodev,data=writeback,barrier=0 -t auto /mnt/sdcard
+
+#set renice credit Prime Directive
+#tweaked by Sonicxml
+# Fixed by jdk
+#
+renice -15 `pidof com.android.launcher`
+renice -12 `pidof com.android.chrome`
+renice -12 `pidof com.google.android.browser`
+renice -10 `pidof com.android.phone`
+renice -10 `pidof com.android.systemui`
+renice -8 `pidof com.android.settings`
+renice -8 `pidof com.android.vending`
+renice -7 `pidof com.android.inputmethod.latin`
+renice -6 `pidof com.android.camera`
+renice -6 `pidof com.google.android.apps.maps`
+ionice -c3 -n7 `pidof com.swype.android.inputmethd:swypeconnect`
+ionice -c2 -n0 `pidof com.android.camera`
+
+busybox rm -f /data/system/userbehavior.db
+busybox chmod 400 /data/system/usagestats/
+busybox chmod 400 /data/system/appusagestats/

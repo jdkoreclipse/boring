@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<spnOverrides>
+	<spnOverride numeric="310004" spn="Verizon Wireless" />
+	<spnOverride numeric="310005" spn="Verizon Wireless" />
+	<spnOverride numeric="310012" spn="Verizon Wireless" />
+	<spnOverride numeric="311480" spn="Verizon Wireless" />
+</spnOverrides>
