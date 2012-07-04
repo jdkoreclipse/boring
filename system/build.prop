@@ -68,7 +68,7 @@ wifi.supplicant_scan_interval=250
 ro.opengles.version=131072
 ro.sf.lcd_density=320
 
-#Dalvik
+#Vanir Tweaks
 net.bt.name=Android
 dalvik.vm.stack-trace-file=/data/anr/traces.txt
 dalvik.vm.heapstartsize=16m
@@ -79,15 +79,11 @@ dalvik.vm.dexopt-flags=v=a,o=v,u=y,m=y
 dalvik.vm.lockprof.threshold=75
 #testing
 dalvik.vm.verify-bytecode=false
-
-#Network
 net.tcp.buffersize.default=4096,87380,256960,4096,16384,256960 
 net.tcp.buffersize.wifi=4096,87380,256960,4096,16384,256960 
 net.tcp.buffersize.umts=4096,87380,256960,4096,16384,256960 
 net.tcp.buffersize.gprs=4096,87380,256960,4096,16384,256960 
 net.tcp.buffersize.edge=4096,87380,256960,4096,16384,256960 
-
-# CMPLX
 ro.kernel.android.checkjni=0
 ro.media.enc.jpeg.quality=100
 debug.sf.hw=1
@@ -99,12 +95,8 @@ pm.sleep_mode=1
 ro.HOME_APP_ADJ=1
 persist.sys.use_dithering=0
 ro.ril.disable.power.collapse=0
-
-#T5UN4MI - PrimeDirective
 ro.ext4fs=1
 debug.composition.type=gpu
-
-#lobst3r butter
 ro.HOME_APP_MEM=8192
 ro.max.fling_velocity=12000 
 ro.min.fling_velocity=8000
