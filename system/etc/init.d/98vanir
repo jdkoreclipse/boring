@@ -51,19 +51,6 @@ sysctl -w vm.overcommit_memory=1
 sysctl -w vm.page-cluster=3
 sysctl -w vm.drop_caches=3
 
-
-#Battery
-#
-busybox sysctl -w vm.dirty_expire_centisecs=1000
-busybox sysctl -w vm.dirty_writeback_centisecs=2000
-busybox sysctl -w kernel.random.write_wakeup_threshold=256
-busybox sysctl -w kernel.random.read_wakeup_threshold=128
-
-#network efficiency
-echo 0 > /proc/sys/net/ipv4/tcp_timestamps
-echo 1 > /proc/sys/net/ipv4/tcp_no_metrics_save
-echo 1 > /sys/module/bcmdhd/parameters/wifi_pm
-
 # Optimize Vm
 #
 if [ -e /proc/sys/vm/vfs_cache_pressure ]; then
@@ -90,6 +77,31 @@ if [ -f "\$i" ]; then
 	sync;
 	echo "cfq" > \$i;
 fi
+
+#kernel tweaks
+sysctl -w kernel.sched_features=15834233
+sysctl -w kernel.panic=0
+sysctl -w kernel.panic_on_oops=1
+sysctl -w kernel.msgmni=2048
+sysctl -w kernel.msgmax=64000
+sysctl -w kernel.shmmax=268435500
+sysctl -w kernel.sem=500,512000,64,2048
+sysctl -w kernel.hung_task_timeout_secs=0
+sysctl -w kernel.sched_latency_ns=5000000; #600000
+sysctl -w kernel.sched_min_granularity_ns=1000000; #400000
+sysctl -w kernel.sched_wakeup_granularity_ns=1000000
+sysctl -w kernel.sched_compat_yield=1
+sysctl -w kernel.sched_shares_ratelimit=256000
+sysctl -w kernel.sched_child_runs_first=0
+sysctl -w kernel.threads-max=525810
+sysctl -w kernel.multi_threading=2
+
+# I/O
+#
+echo "0 0 0 1 1 1 2 2" > /sys/devices/system/cpu/cpu0/cpufreq/busfreq_static
+echo "enabled" > /sys/devices/system/cpu/cpu0/cpufreq/busfreq_static
+echo "sio" >/sys/block/sda/queue/scheduler
+
 
 
 # File System Mounts
@@ -224,7 +236,6 @@ renice -10 `pidof com.android.systemui`
 renice -8 `pidof com.android.settings`
 renice -6 `pidof com.android.camera`
 renice -6 `pidof com.google.android.apps.maps`
-ionice -c2 -n0 `pidof com.android.camera`
 
 busybox rm -f /data/system/userbehavior.db
 busybox chmod 400 /data/system/usagestats/

@@ -77,13 +77,7 @@ dalvik.vm.heapsize=384m
 dalvik.vm.execution-mode=int:jit
 dalvik.vm.dexopt-flags=v=a,o=v,u=y,m=y
 dalvik.vm.lockprof.threshold=75
-#testing
 dalvik.vm.verify-bytecode=false
-net.tcp.buffersize.default=4096,87380,256960,4096,16384,256960 
-net.tcp.buffersize.wifi=4096,87380,256960,4096,16384,256960 
-net.tcp.buffersize.umts=4096,87380,256960,4096,16384,256960 
-net.tcp.buffersize.gprs=4096,87380,256960,4096,16384,256960 
-net.tcp.buffersize.edge=4096,87380,256960,4096,16384,256960 
 ro.kernel.android.checkjni=0
 ro.media.enc.jpeg.quality=100
 debug.sf.hw=1
@@ -92,9 +86,7 @@ video.accelerate.hw=1
 persist.sys.purgeable_assets=1
 windowsmgr.max_events_per_sec=280
 pm.sleep_mode=1
-ro.HOME_APP_ADJ=1
 persist.sys.use_dithering=0
-ro.ril.disable.power.collapse=0
 ro.ext4fs=1
 debug.composition.type=gpu
 ro.HOME_APP_MEM=8192
