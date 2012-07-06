@@ -7,7 +7,7 @@ if [ -e $LOG_FILE ]; then
 	rm $LOG_FILE;
 fi;
 
-#knuckleheads, gain rw access
+# gain rw access
 sysrw
 
 # enable sysctl tweaks
@@ -51,19 +51,6 @@ sysctl -w vm.overcommit_memory=1
 sysctl -w vm.page-cluster=3
 sysctl -w vm.drop_caches=3
 
-
-#Battery
-#
-busybox sysctl -w vm.dirty_expire_centisecs=1000
-busybox sysctl -w vm.dirty_writeback_centisecs=2000
-busybox sysctl -w kernel.random.write_wakeup_threshold=256
-busybox sysctl -w kernel.random.read_wakeup_threshold=128
-
-#network efficiency
-echo 0 > /proc/sys/net/ipv4/tcp_timestamps
-echo 1 > /proc/sys/net/ipv4/tcp_no_metrics_save
-echo 1 > /sys/module/bcmdhd/parameters/wifi_pm
-
 # Optimize Vm
 #
 if [ -e /proc/sys/vm/vfs_cache_pressure ]; then
@@ -91,6 +78,31 @@ if [ -f "\$i" ]; then
 	echo "cfq" > \$i;
 fi
 
+#kernel tweaks
+sysctl -w kernel.sched_features=15834233
+sysctl -w kernel.panic=0
+sysctl -w kernel.panic_on_oops=1
+sysctl -w kernel.msgmni=2048
+sysctl -w kernel.msgmax=64000
+sysctl -w kernel.shmmax=268435500
+sysctl -w kernel.sem=500,512000,64,2048
+sysctl -w kernel.hung_task_timeout_secs=0
+sysctl -w kernel.sched_latency_ns=5000000; #600000
+sysctl -w kernel.sched_min_granularity_ns=1000000; #400000
+sysctl -w kernel.sched_wakeup_granularity_ns=1000000
+sysctl -w kernel.sched_compat_yield=1
+sysctl -w kernel.sched_shares_ratelimit=256000
+sysctl -w kernel.sched_child_runs_first=0
+sysctl -w kernel.threads-max=525810
+sysctl -w kernel.multi_threading=2
+
+# I/O
+#
+echo "0 0 0 1 1 1 2 2" > /sys/devices/system/cpu/cpu0/cpufreq/busfreq_static
+echo "enabled" > /sys/devices/system/cpu/cpu0/cpufreq/busfreq_static
+echo "sio" >/sys/block/sda/queue/scheduler
+
+
 
 # File System Mounts
 #
@@ -109,22 +121,121 @@ busybox mount -o remount,noatime,nodiratime,discard,noauto_da_alloc,nosuid,nodev
 busybox mount -o remount,noatime,nodiratime,discard,noauto_da_alloc,nosuid,nodev,data=writeback,barrier=0 -t auto /mnt/obb
 busybox mount -o remount,noatime,nodiratime,discard,noauto_da_alloc,nosuid,nodev,data=writeback,barrier=0 -t auto /mnt/sdcard
 
+#Defrags database files
+
+VAC_LOG_FILE=/data/S50-vacuum-databases.log
+
+# do nothing if less than 5 days
+find $VAC_LOG_FILE -type f -mtime +5 -delete
+
+if ! test -f $VAC_LOG_FILE; then
+
+	/bin/mount -o remount,rw /
+
+	if [ -e $VAC_LOG_FILE ]; then
+		rm $VAC_LOG_FILE;
+	fi;
+    	
+	echo "Starting Sqlite Vacuum $( date +"%m-%d-%Y %H:%M:%S" )" | tee -a $VAC_LOG_FILE;
+
+	for i in \
+	`find /data -iname "*.db"`
+	do \
+		sqlite3 $i 'VACUUM;'; 
+		echo Vacuum $i  | tee -a $VAC_LOG_FILE;
+	done;
+
+	for i in \
+	`find /dbdata -iname "*.db"`
+	do \
+		sqlite3 $i 'VACUUM;'; 
+		echo Vacuum $i  | tee -a $VAC_LOG_FILE;
+	done;
+
+	for i in \
+	`find /sdcard -iname "*.db"`
+	do \
+		sqlite3 $i 'VACUUM;'; 
+		echo Vacuum $i  | tee -a $VAC_LOG_FILE;
+	done
+
+	echo "Sqlite Vacuum finished at $( date +"%m-%d-%Y %H:%M:%S" )" | tee -a $VAC_LOG_FILE;
+
+	/bin/mount -o remount,ro /
+
+fi
+
+# CMPLX zipalign.
+
+
+ZIP_LOG_FILE=/data/log/zipalign.log;
+ZIPALIGNED_APK=/data/local/zipalignedapk;
+
+if [ -e $ZIP_LOG_FILE ]; then
+	rm $ZIP_LOG_FILE;
+fi;
+
+if [ ! -f $ZIPALIGNED_APK ]; then
+	touch $ZIPALIGNED_APK;
+fi;
+
+echo "Automatic ZipAlign started at $( date +"%m-%d-%Y %H:%M:%S" ) " | tee -a $ZiP_LOG_FILE;
+
+for DIR in /system/app /data/app; do
+	cd $DIR;
+	for APK in *.apk; do
+		if [ $APK -ot $ZIPALIGNED_APK ] && [ $(grep "$DIR/$APK" $ZIPALIGNED_APK|wc -l) -gt 0 ]; then
+			echo "Already checked: $DIR/$APK" | tee -a $ZIP_LOG_FILE;
+			if [ -e /data/$APK ]; then
+				rm /data/$APK;
+				echo "Temporary APK removed: /data/$APK" | tee -a $ZIP_LOG_FILE;
+			fi;
+		else
+			ZIPCHECK=`/system/xbin/zipalign -c -v 4 $APK | grep FAILED | wc -l`;
+			if [ $ZIPCHECK == "1" ]; then
+				echo "Now aligning: $DIR/$APK" | tee -a $ZIP_LOG_FILE;
+				/system/xbin/zipalign -v -f 4 $APK /data/$APK;
+				sync
+				busybox mount -o rw,remount /system;
+				cp -f -p /data/$APK $APK;
+				rm /data/$APK;
+				if [ -e /data/$APK ]; then
+					sleep 2;
+					rm /data/$APK;
+					if [ -e /data/$APK ]; then
+						echo "Failed to remove APK. Run the tweak again : /data/$APK" | tee -a $ZIP_LOG_FILE;
+					else
+						echo "Temporary APK removed: /data/$APK" | tee -a $ZIP_LOG_FILE;
+					fi;
+				fi;
+				grep "$DIR/$APK" $ZIPALIGNED_APK > /dev/null || echo $DIR/$APK >> $ZIPALIGNED_APK;
+			else
+				echo "Already aligned: $DIR/$APK" | tee -a $ZIP_LOG_FILE;
+				if [ -e /data/$APK ]; then
+					rm /data/$APK;
+					echo "Temporary APK removed: /data/$APK" | tee -a $ZIP_LOG_FILE;
+				fi;
+				grep "$DIR/$APK" $ZIPALIGNED_APK > /dev/null || echo $DIR/$APK >> $ZIPALIGNED_APK;
+			fi;
+		fi;
+	done;
+done;
+sync
+busybox mount -o ro,remount /system;
+touch $ZIPALIGNED_APK;
+echo "Automatic ZipAlign finished at $( date +"%m-%d-%Y %H:%M:%S" )" | tee -a $ZIP_LOG_FILE;
+
 #set renice credit Prime Directive
 #tweaked by Sonicxml
 # Fixed by jdk
 #
 renice -15 `pidof com.android.launcher`
-renice -12 `pidof com.android.chrome`
 renice -12 `pidof com.google.android.browser`
 renice -10 `pidof com.android.phone`
 renice -10 `pidof com.android.systemui`
 renice -8 `pidof com.android.settings`
-renice -8 `pidof com.android.vending`
-renice -7 `pidof com.android.inputmethod.latin`
 renice -6 `pidof com.android.camera`
 renice -6 `pidof com.google.android.apps.maps`
-ionice -c3 -n7 `pidof com.swype.android.inputmethd:swypeconnect`
-ionice -c2 -n0 `pidof com.android.camera`
 
 busybox rm -f /data/system/userbehavior.db
 busybox chmod 400 /data/system/usagestats/
